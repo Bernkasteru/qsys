@@ -1,0 +1,3 @@
+- 同步延迟 (按 hash 分流 + worker pool; 请求合并)
+- trySyncing 前是否需要短路？
+- Recon stage 2, 数据误删竞态

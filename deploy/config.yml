@@ -1,0 +1,27 @@
+# Kafka 集群配置
+kafka:
+  brokers: 
+    - "localhost:9092"
+    - "localhost:9094"
+    - "localhost:9096"
+
+  topic: "conorder"
+  
+  # 消费者组 ID (upd_svr 使用)
+  group_id: "qsys_upd_group"
+
+
+  worker_num: 100
+  max_queue_size: 1000
+  send_timeout: 3s
+  batch_size: 50
+  batch_timeout: 60ms
+
+# MySQL 配置
+mysql:
+  # DSN
+  dsn: "root:root@tcp(localhost:3306)/conorder_db?charset=utf8mb4&parseTime=True&loc=Local"
+
+# Redis 配置
+redis:
+  addr: "localhost:6379"

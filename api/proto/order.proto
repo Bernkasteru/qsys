@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package model;
+
+option go_package = "./internal/model";
+
+message Order {
+  string client_id     = 1;
+  string exchange_type = 2; // "1" 代表沪市, "2" 代表深市
+  string stock_code    = 3;
+  string action        = 4; // "cre" 或 "del"
+  int64  timestamp     = 5;
+}
