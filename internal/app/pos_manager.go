@@ -1,16 +1,19 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"qsys/internal/db"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	mysqlorg "github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/redis/go-redis/v9"
 )
 
 // LogEntry 兼容传统与 GTID 模式
@@ -22,6 +25,7 @@ type LogEntry struct {
 // PosManager 负责 Binlog Position 的持久化管理
 type PosManager struct {
 	filePath string
+	rdb      *db.RedisRepo // 如果非空, 则用 redis
 
 	// 存储 LogEntry {mysqlorg.Position, Gtid string}
 	cur atomic.Value
@@ -32,22 +36,34 @@ type PosManager struct {
 }
 
 const (
-	fIntrvl   = 5 * time.Second
-	tmpSuffix = ".tmp"
+	fIntrvl     = 5 * time.Second
+	genTTL      = 2 * time.Second
+	tmpSuffix   = ".tmp"
+	redisPoskey = "qsys:canal:pos"
 )
 
-func NewPosManager(dataDir string) *PosManager {
-	if err := os.MkdirAll(dataDir, 0755); err != nil {
-		log.Fatalf("[Pos] Warning! Cannot make dir %s: %v", dataDir, err)
+func NewPosManager(dataDir string, rdb *db.RedisRepo) *PosManager {
+	p := &PosManager{
+		filePath: filepath.Join(dataDir, "parse.dat"),
+		rdb:      rdb,
 	}
-	p := &PosManager{filePath: filepath.Join(dataDir, "parse.dat")} // 仿 Java 命名
 
 	// 预装填空点位
 	emptyle := LogEntry{Posi: mysqlorg.Position{}}
 	p.cur.Store(emptyle)
 	p.lst.Store(emptyle)
-	if err := p.cleanTmp(); err != nil {
-		log.Printf("[Pos] Warning! Cannot cleanup tmpfile: %v", err)
+
+	if p.rdb == nil {
+		// 文件模式, 需要创建目录、清理 tmp
+		if err := os.MkdirAll(dataDir, 0755); err != nil {
+			log.Fatalf("[Pos] Warning! Cannot make dir %s: %v", dataDir, err)
+		}
+		if err := p.cleanTmp(); err != nil {
+			log.Printf("[Pos] Warning! Cannot cleanup tmpfile: %v", err)
+		}
+		log.Println("[Pos] PosManager running in LOCAL FILE Mode")
+	} else {
+		log.Println("[Pos] PosManager running in REDIS CLUSTER Mode")
 	}
 
 	go p.flushLoop()
@@ -67,28 +83,46 @@ func (p *PosManager) Save(pos mysqlorg.Position, gtidSet mysqlorg.GTIDSet) {
 	p.cur.Store(le)
 }
 
-// Load 从磁盘加载, 用于断点续传；仅在程序启动时调用 1 次 [磁盘记忆 -> 内存]
+// Load 双模读取
 func (p *PosManager) Load() error {
-	data, err := os.ReadFile(p.filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Println("[Pos] Historical pos not found, new start..")
-			return nil // 不存在 -> 初次启动
+	var data []byte
+	var err error
+
+	if p.rdb != nil {
+		// Redis 模式读取
+		ctx, cancel := context.WithTimeout(context.Background(), genTTL)
+		defer cancel()
+
+		val, errRedis := p.rdb.Eval(ctx, db.GetPosScript, []string{redisPoskey}).Result()
+		if errRedis == redis.Nil || val == nil {
+			log.Println("[Pos_redis] Historical pos not found, new start..")
+			return nil
+		} else if errRedis != nil {
+			return fmt.Errorf("Read redis failed: %w", errRedis)
 		}
-		return fmt.Errorf("[Pos] Read failed: %w", err)
+		data = []byte(val.(string))
+	} else {
+		// 本地文件模式读取
+		data, err = os.ReadFile(p.filePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				log.Println("[Pos_file] Historical pos not found, new start..")
+				return nil
+			}
+			return fmt.Errorf("Read file failed: %w", err)
+		}
 	}
+
 	if len(data) == 0 {
-		log.Println("[Pos] Warning! parse.dat is empty")
 		return nil
 	}
 
 	var le LogEntry
 	if err := json.Unmarshal(data, &le); err != nil {
-		return fmt.Errorf("[Pos] Unmarshal .json failed: %w", err)
+		return fmt.Errorf("Unmarshal .json failed: %w", err)
 	}
 	p.lst.Store(le)
 	p.cur.Store(le)
-
 	return nil
 }
 
@@ -97,58 +131,57 @@ func (p *PosManager) Get() LogEntry {
 	return p.cur.Load().(LogEntry)
 }
 
-// Flush 执行实际的原子磁盘写入操作, 由后台 goroutine 定期调用
+// Flush 双模写入, 由后台 goroutine 定期调用
 func (p *PosManager) Flush() error {
 	curEntry, lstEntry := p.cur.Load().(LogEntry), p.lst.Load().(LogEntry)
 	// 跳过无效点位
-	if curEntry.Posi.Name == "" || curEntry.Posi.Pos == 0 {
+	if curEntry.Posi.Name == "" || curEntry.Posi.Pos == 0 || curEntry == lstEntry {
 		return nil
 	}
-	// 跳过未变化的点位
-	if curEntry == lstEntry {
-		return nil
-	}
-	// 写磁盘, lock
+
+	// 写 redis/磁盘, lock
 	p.mu.Lock()
 	defer p.mu.Unlock()
-
 	lstEntry = p.lst.Load().(LogEntry)
 	if curEntry == lstEntry {
 		return nil // 双检查锁
 	}
 
-	tmpFile := p.filePath + tmpSuffix
 	data, err := json.Marshal(curEntry)
 	if err != nil {
 		return fmt.Errorf("Marshal .json failed: %w", err)
 	}
-	f, err := os.OpenFile(tmpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("Open/create tmp: %w", err)
-	}
-	// defer f.Close()
 
-	if _, err := f.Write(data); err != nil {
+	if p.rdb != nil {
+		// Redis 模式写入
+		ctx, cancel := context.WithTimeout(context.Background(), genTTL)
+		defer cancel()
+		// 直接覆盖写入
+		err = p.rdb.Eval(ctx, db.SetPosScript, []string{redisPoskey}, string(data)).Err()
+		if err != nil {
+			return fmt.Errorf("Sync(redis) err: %w", err)
+		}
+	} else {
+		// 本地文件模式写入
+		tmpFile := p.filePath + tmpSuffix
+		f, err := os.OpenFile(tmpFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			return fmt.Errorf("Open/create tmp: %w", err)
+		}
+		if _, err := f.Write(data); err != nil {
+			f.Close()
+			os.Remove(tmpFile)
+			return fmt.Errorf("Write failed: %w", err)
+		}
+		if err := f.Sync(); err != nil {
+			f.Close()
+			os.Remove(tmpFile)
+			return fmt.Errorf("Sync(file) err: %w", err)
+		}
 		f.Close()
-		os.Remove(tmpFile)
-		return fmt.Errorf("Write failed: %w", err)
-	}
-
-	// 强制刷盘, 达到物理同步
-	if err := f.Sync(); err != nil {
-		f.Close()
-		os.Remove(tmpFile)
-		return fmt.Errorf("Sync err: %w", err)
-	}
-
-	// 显式关闭
-	if err := f.Close(); err != nil {
-		os.Remove(tmpFile)
-		return fmt.Errorf("Close err: %w", err)
-	}
-
-	if err := os.Rename(tmpFile, p.filePath); err != nil {
-		return fmt.Errorf("Rename err: %w", err)
+		if err := os.Rename(tmpFile, p.filePath); err != nil {
+			return fmt.Errorf("Rename err: %w", err)
+		}
 	}
 
 	p.lst.Store(curEntry)

@@ -30,3 +30,13 @@ qsys/
 Done:
 - docker-compose.yml docker的配置
 - 初始化db
+
+Test?
+go run cmd/syncer/main.go, 同步器
+go run cmd/consumer/main.go *3 消费节点
+go run cmd/sims/qsim.go 发单压测
+
+核验:
+docker exec deploy-mysql-1 mysql -uroot -proot conorder_db -e "SELECT COUNT(DISTINCT client_id) FROM orders;"
+docker exec deploy-redis-1 redis-cli SCARD qsys:active_clients
+go run cmd/reconciler/recon.go 对账工具

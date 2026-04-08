@@ -37,6 +37,11 @@ else
 end
 `
 
+const (
+	GetPosScript = `return redis.call('GET', KEYS[1])`
+	SetPosScript = `return redis.call('SET', KEYS[1], ARGV[1])`
+)
+
 func NewRedisRepo(cfg RedisConfig) *RedisRepo {
 	if cfg.PoolSize == 0 {
 		cfg.PoolSize = 16
