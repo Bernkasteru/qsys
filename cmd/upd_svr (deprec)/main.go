@@ -67,7 +67,7 @@ func NewUpdEngine(cfgPath string) (*UpdEngine, error) {
 		PoolSize: 32,
 	})
 
-	pm := app.NewPosManager(dataDir)
+	pm := app.NewPosManager(dataDir, rRepo)
 	if err = pm.Load(); err != nil {
 		log.Printf("[Upd_main] Warning! Cannot load historical pos ヽ(ー_ー)┌: %v", err)
 	}
