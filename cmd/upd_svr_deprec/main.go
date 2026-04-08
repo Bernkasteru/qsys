@@ -319,6 +319,7 @@ func (e *UpdEngine) Close() {
 	_ = e.kafkaReader.Close()
 	_ = e.dlqWriter.Close()
 	_ = e.mysqlDB.Close()
+	_ = e.redisDB.Close()
 	log.Println("[Upd_main] Engine shutdown")
 }
 

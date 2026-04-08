@@ -20,8 +20,8 @@ kafka:
 # MySQL 配置
 mysql:
   # DSN
-  dsn: "root:root@tcp(localhost:3306)/conorder_db?charset=utf8mb4&parseTime=True&loc=Local"
+  dsn: "root:root@tcp(mysql:3306)/conorder_db?charset=utf8mb4&parseTime=True&loc=Local"
 
 # Redis 配置
 redis:
-  addr: "localhost:6379"
+  addr: "redis:6379"

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package model;
+
+option go_package = "./internal/model";
+
+// Order 快照
+message OrderInfo {
+    string exchange_type = 1;
+    string stock_code = 2;
+}
+
+// Http 查询返回的结构
+message QueryResp {
+    string client_id = 1;
+    repeated OrderInfo infos = 2;
+}

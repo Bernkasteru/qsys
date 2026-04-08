@@ -225,6 +225,7 @@ func (e *SyncerEngine) Close() {
 	// 释放底层资源
 	e.posManager.Close()
 	_ = e.mysqlDB.Close()
+	_ = e.redisDB.Close()
 	log.Println("[Sync_main] Engine shutdown")
 }
 

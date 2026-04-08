@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"qsys/internal/model"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -61,6 +62,28 @@ func (r *OrderRepo) GetOrderCount(ctx context.Context, clientId string) (int, er
 		// return 0, fmt.Errorf("GetOrderCount failed for client %s: %w", clientId, err)
 	}
 	return count, nil
+}
+
+func (r *OrderRepo) GetOrders(ctx context.Context, clientId string) ([]*model.OrderInfo, error) {
+	query := `SELECT exchange_type, stock_code FROM orders WHERE client_id = ?`
+	rows, err := r.db.QueryContext(ctx, query, clientId)
+	if err != nil {
+		return nil, fmt.Errorf("[Mysql] GetOrders failed for client %s: %w", clientId, err)
+	}
+	defer rows.Close()
+
+	var items []*model.OrderInfo
+	for rows.Next() {
+		var exType, sCode string
+		if err := rows.Scan(&exType, &sCode); err != nil {
+			continue
+		}
+		items = append(items, &model.OrderInfo{
+			ExchangeType: exType,
+			StockCode:    sCode,
+		})
+	}
+	return items, nil
 }
 
 func (r *OrderRepo) Close() error {

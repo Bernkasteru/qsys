@@ -89,6 +89,10 @@ func (r *RedisRepo) SRemActive(ctx context.Context, clientId string) error {
 	return nil
 }
 
+func (r *RedisRepo) SIsMember(ctx context.Context, clientId string) (bool, error) {
+	return r.rdb.SIsMember(ctx, Ac, clientId).Result()
+}
+
 // SetNX 尝试抢锁, 返回是否成功
 func (r *RedisRepo) SetNX(ctx context.Context, key, val string, ttl time.Duration) (bool, error) {
 	err := r.rdb.SetArgs(ctx, key, val, redis.SetArgs{
@@ -111,4 +115,17 @@ func (r *RedisRepo) Eval(ctx context.Context, script string, keys []string, args
 
 func (r *RedisRepo) Del(ctx context.Context, key string) error {
 	return r.rdb.Del(ctx, key).Err()
+}
+
+func (r *RedisRepo) Close() error {
+	if r.rdb == nil {
+		return nil
+	}
+
+	err := r.rdb.Close()
+	if err != nil {
+		return fmt.Errorf("[Redis] Failed to close connection pool: %w", err)
+	}
+
+	return nil
 }

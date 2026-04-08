@@ -8,20 +8,31 @@ services:
       - "3306:3306"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./mysql_data:/var/lib/mysql
+    networks:
+      - qsys-network
   redis:
     image: redis:7.2.4-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - ./redis_data:/data
+    networks:
+      - qsys-network
   influxdb:
     image: influxdb:2.8.0
     ports:
       - "8086:8086"
+    networks:
+      - qsys-network
   grafana:
     image: grafana/grafana:10.4.1
     ports:
       - "3000:3000"
     depends_on:
       - influxdb
+    networks:
+      - qsys-network
 
   # 3 brokers
   kafka-1:
@@ -46,6 +57,8 @@ services:
       - KAFKA_LOG_SEGMENT_BYTES=104857600  # 100MB
     ports:
       - "9092:9092"
+    networks:
+      - qsys-network
   kafka-2:
     image: apache/kafka:3.7.0
     platform: linux/arm64
@@ -65,6 +78,8 @@ services:
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=3
     ports:
       - "9094:9094"
+    networks:
+      - qsys-network
   kafka-3:
     image: apache/kafka:3.7.0
     platform: linux/arm64
@@ -84,3 +99,44 @@ services:
       - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=3
     ports:
       - "9096:9096"
+    networks:
+      - qsys-network
+
+  nginx:
+    image: nginx:1.28.3-alpine
+    container_name: qsys-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - cli_svr1
+      - cli_svr2
+    networks:
+      - qsys-network
+  
+  # 查询服务实例
+  cli_svr1:
+    build: 
+      context: ..
+      dockerfile: ./deploy/cli.Dockerfile
+    container_name: qsys-cli-1
+    environment:
+      - SERVER_NAME=qsys-cli-1
+      - QSYS_ENV=prod
+    networks:
+      - qsys-network
+  cli_svr2:
+    build:
+      context: ..
+      dockerfile: ./deploy/cli.Dockerfile
+    container_name: qsys-cli-2
+    environment:
+      - SERVER_NAME=qsys-cli-2
+      - QSYS_ENV=prod
+    networks:
+      - qsys-network
+      
+networks:
+  qsys-network:
+    driver: bridge
