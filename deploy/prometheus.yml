@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'qsys_cli'
+    static_configs:
+      - targets: ['qsys-cli-1:8080', 'qsys-cli-2:8080']
+  - job_name: 'qsys_redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+  - job_name: 'qsys_kafka'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+  - job_name: 'qsys_tools'
+    static_configs:
+    - targets: ['qsys-sims:9100']
+    

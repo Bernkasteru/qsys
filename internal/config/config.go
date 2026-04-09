@@ -12,8 +12,9 @@ import (
 )
 
 type AppConfig struct {
-	Env  string `yaml:"env"`  // dev, test, prod
-	Port int    `yaml:"port"` // cli_svr 监听端口
+	Env     string `yaml:"env"`  // dev, test, prod
+	Port    int    `yaml:"port"` // cli_svr 监听端口
+	SimPort int    `yaml:"sim_port"`
 }
 
 type KafkaConfig struct {
@@ -47,6 +48,25 @@ type Config struct {
 var GlobalConfig *Config
 
 func override(cfg *Config) {
+	// App 配置覆盖
+	if env := os.Getenv("QSYS_ENV"); env != "" {
+		cfg.App.Env = env
+	}
+	if portStr := os.Getenv("QSYS_PORT"); portStr != "" {
+		if p, err := strconv.Atoi(portStr); err == nil {
+			cfg.App.Port = p
+		} else {
+			fmt.Printf("Warning! Invalid QSYS_PORT env var: %s\n", portStr)
+		}
+	}
+	if spStr := os.Getenv("QSYS_SIM_PORT"); spStr != "" {
+		if p, err := strconv.Atoi(spStr); err == nil {
+			cfg.App.SimPort = p
+		} else {
+			fmt.Printf("Warning! Invalid QSYS_SIM_PORT env var: %s\n", spStr)
+		}
+	}
+
 	if b := os.Getenv("QSYS_KAFKA_BROKERS"); b != "" {
 		cfg.Kafka.Brokers = strings.Split(b, ",")
 	}

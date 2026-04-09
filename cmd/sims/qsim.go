@@ -4,13 +4,19 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"os/signal"
 	"qsys/internal/config"
 	"qsys/internal/model"
 	"qsys/internal/mq"
+	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type StockInfo struct {
@@ -18,8 +24,13 @@ type StockInfo struct {
 	Code     string
 }
 
+var simOrdersTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	Name: "qsys_sim_orders_total",
+	Help: "Total number of simulated orders sent to Kafka",
+}, []string{"status"})
+
 func main() {
-	_, err := config.LoadConfig("./deploy/config.yml")
+	cfg, err := config.LoadConfig("./deploy/config.yml")
 	if err != nil {
 		fmt.Printf("Failed to load config.yml: %v\n", err)
 		return
@@ -27,6 +38,16 @@ func main() {
 
 	producer := mq.New()
 	defer producer.Close()
+
+	metricsPort := ":" + strconv.Itoa(cfg.App.SimPort)
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		fmt.Printf("压测指标: http://localhost%s/metrics\n", metricsPort)
+		if err := http.ListenAndServe(metricsPort, nil); err != nil {
+			fmt.Printf("!! Metrics server: %v\n", err)
+		}
+	}()
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -72,8 +93,10 @@ func main() {
 			}
 			if err := producer.SendOrder(ctx, order); err != nil {
 				fmt.Printf("[Qsim] %v\n", err)
+				simOrdersTotal.WithLabelValues("fail").Inc() // 失败计数
 				continue
 			}
+			simOrdersTotal.WithLabelValues("success").Inc() // 成功计数
 		}
 	}
 }

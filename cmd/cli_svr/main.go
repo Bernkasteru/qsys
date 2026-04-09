@@ -10,11 +10,16 @@ import (
 	"qsys/internal/db"
 	"qsys/internal/model"
 	"regexp"
+	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
 	frecover "github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/valyala/fasthttp/fasthttpadaptor"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -34,6 +39,20 @@ const (
 	idleTout = 40 * time.Second
 	genTTL   = 2 * time.Second
 	sdTout   = 5 * time.Second
+)
+
+// Prometheus 监控指标
+var (
+	httpRequestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "qsys_http_requests_total",
+		Help: "Total number of HTTP requests",
+	}, []string{"method", "path", "status"})
+
+	httpRequestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "qsys_http_request_duration_seconds",
+		Help:    "HTTP request duration in seconds",
+		Buckets: []float64{0.01, 0.05, 0.1, 0.5, 1, 2},
+	}, []string{"method", "path"})
 )
 
 func NewCliEngine(cfgPath string) (*CliEngine, error) {
@@ -88,7 +107,13 @@ func (e *CliEngine) setupApp() {
 	e.app.Use(frecover.New(frecover.Config{
 		EnableStackTrace: true,
 	}))
-	// 日志追踪
+
+	// /metrics 接口, 供 Prometheus 拉取
+	e.app.Get("/metrics", func(c fiber.Ctx) error {
+		fasthttpadaptor.NewFastHTTPHandler(promhttp.Handler())(c.RequestCtx())
+		return nil
+	})
+	// 日志追踪 & Prometheus 监控中间件
 	e.app.Use(func(c fiber.Ctx) error {
 		st := time.Now()
 		err := c.Next()
@@ -102,10 +127,17 @@ func (e *CliEngine) setupApp() {
 				code = fiber.StatusInternalServerError // 未知错误? 500
 			}
 		}
+		path := c.Path()
+		log.Printf("[%s] %s, %d, %s, %s; ip: %s", e.insName, c.Method(), code, path, time.Since(st), c.IP())
 
-		log.Printf("[%s] %s, %d, %s, %s; ip: %s", e.insName, c.Method(), code, c.Path(), time.Since(st), c.IP())
+		if path != "/metrics" && path != "/ping" { // Prometheus 指标上报
+			httpRequestsTotal.WithLabelValues(c.Method(), path, strconv.Itoa(code)).Inc()
+			httpRequestDuration.WithLabelValues(c.Method(), path).Observe(time.Since(st).Seconds())
+		}
+
 		return err
 	})
+
 	// ping 检查
 	e.app.Get("/ping", func(c fiber.Ctx) error {
 		return c.SendString("pong")
@@ -181,8 +213,12 @@ func sendResp(c fiber.Ctx, resp *model.QueryResp, fmtType string) error {
 }
 
 func (e *CliEngine) Start() {
-	log.Printf("[%s] Starting api server on :8080..", e.insName)
-	if err := e.app.Listen(":8080"); err != nil {
+	listenAddr := ":" + strconv.Itoa(e.cfg.App.Port)
+	listenCfg := fiber.ListenConfig{
+		DisableStartupMessage: e.cfg.App.Env == "prod",
+	}
+	log.Printf("[%s] Starting api server on %s..", e.insName, listenAddr)
+	if err := e.app.Listen(listenAddr, listenCfg); err != nil {
 		log.Fatalf("[%s] Listen err: %v", e.insName, err)
 	}
 }
