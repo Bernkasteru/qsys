@@ -9,6 +9,11 @@ services:
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-uroot", "-proot"] 
+      interval: 2s
+      timeout: 3s
+      retries: 3
     networks:
       - qsys-network
   redis:
@@ -140,12 +145,26 @@ services:
   prometheus:
     image: prom/prometheus:v3.8.1
     container_name: qsys-prometheus
+    extra_hosts:
+      - "qsys-sim:host-gateway"
     ports:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - qsys-network
+  mysql-exporter:
+    image: prom/mysqld-exporter:v0.17.2
+    container_name: qsys-mysql-exporter
+    environment:
+      - DATA_SOURCE_NAME=root:root@(deploy-mysql-1:3306)/
+    ports:
+      - "9104:9104"
+    depends_on:
+      mysql:
+        condition: service_healthy
     networks:
       - qsys-network
   redis-exporter:

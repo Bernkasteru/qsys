@@ -21,8 +21,8 @@ func NewOrderRepo(dsn string) (*OrderRepo, error) {
 	}
 
 	// 连接池配置
-	db.SetMaxOpenConns(200)
-	db.SetMaxIdleConns(20)
+	db.SetMaxOpenConns(150)
+	db.SetMaxIdleConns(140)
 	db.SetConnMaxLifetime(1 * time.Hour)
 	db.SetConnMaxIdleTime(30 * time.Minute)
 

@@ -266,8 +266,13 @@ func (e *UpdEngine) Start() {
 				cleanCtx, cleanCancel := context.WithTimeout(context.WithoutCancel(e.ctx), cleanTout)
 				if err != nil {
 					log.Printf("[Upd_kafka/%d] Handle msg err, send to dlq: %v", wk, err)
+					dlqMsg := kafka.Message{
+						Key:     msg.Key,
+						Value:   msg.Value,
+						Headers: msg.Headers,
+					}
 					// 尝试写入 dlq
-					if dlqErr := e.dlqWriter.WriteMessages(cleanCtx, msg); dlqErr != nil {
+					if dlqErr := e.dlqWriter.WriteMessages(cleanCtx, dlqMsg); dlqErr != nil {
 						log.Printf("[Upd_kafka/%d] !!Cannot write into dlq, give up committing.. %v", wk, dlqErr)
 						cleanCancel()
 						continue // 不 Commit, 保留在原 Topic

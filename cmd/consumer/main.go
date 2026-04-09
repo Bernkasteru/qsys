@@ -98,8 +98,13 @@ func (e *ConsumerEngine) Start() {
 				cleanCtx, cleanCancel := context.WithTimeout(context.WithoutCancel(e.ctx), cleanTout)
 				if err != nil {
 					log.Printf("[Csm_kafka/%d] Handle msg err, send to dlq: %v", wk, err)
+					dlqMsg := kafka.Message{
+						Key:     msg.Key,
+						Value:   msg.Value,
+						Headers: msg.Headers,
+					}
 					// 尝试写入 dlq
-					if dlqErr := e.dlqWriter.WriteMessages(cleanCtx, msg); dlqErr != nil {
+					if dlqErr := e.dlqWriter.WriteMessages(cleanCtx, dlqMsg); dlqErr != nil {
 						log.Printf("[Csm_kafka/%d] !!Cannot write into dlq, give up committing.. %v", wk, dlqErr)
 						cleanCancel()
 						continue // 不 Commit, 保留在原 Topic
@@ -108,7 +113,7 @@ func (e *ConsumerEngine) Start() {
 				} else {
 					// 验证: 利用 Offset, 每处理 200 条打印一次
 					if msg.Offset%200 == 0 {
-						log.Printf("[Csm_kafka/%d] Consuming all right... db updated: client %s (Offset %d)", wk, string(msg.Key), msg.Offset)
+						log.Printf("[Csm_kafka/%d] Consuming all right.. db updated: client %s (Offset %d)", wk, string(msg.Key), msg.Offset)
 					}
 				}
 
