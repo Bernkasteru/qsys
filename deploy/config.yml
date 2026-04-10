@@ -2,6 +2,8 @@ app:
   env: "prod"
   port: 8080
   sim_port: 9100
+  db_batch_size: 200
+  db_batch_tout: 300ms
 
 # Kafka 集群配置
 kafka:
@@ -17,7 +19,7 @@ kafka:
 
 
   worker_num: 100
-  max_queue_size: 1000
+  max_queue_size: 2100
   send_timeout: 3s
   batch_size: 200
   batch_timeout: 60ms
@@ -25,7 +27,7 @@ kafka:
 # MySQL 配置
 mysql:
   # DSN
-  dsn: "root:root@tcp(mysql:3306)/conorder_db?charset=utf8mb4&parseTime=True&loc=Local"
+  dsn: "root:root@tcp(mysql:3306)/conorder_db?charset=utf8mb4&parseTime=True&loc=Local&transaction_isolation='READ-COMMITTED'"
 
 # Redis 配置
 redis:

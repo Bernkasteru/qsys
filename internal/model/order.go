@@ -29,6 +29,13 @@ type Order struct {
 }
 */
 
+// OrderKey 使用定长数组, 将结构体作为 mapkey
+type OrderKey struct {
+	Client [12]byte
+	ExType byte
+	Stock  [6]byte
+}
+
 func New(clientId, exchangeType, stockCode, action string) *Order {
 	return &Order{
 		ClientId:     clientId,
@@ -37,6 +44,16 @@ func New(clientId, exchangeType, stockCode, action string) *Order {
 		Action:       action,
 		Timestamp:    time.Now().UnixMilli(),
 	}
+}
+
+func BuildOrderKey(clientId string, exType string, sCode string) OrderKey {
+	var k OrderKey
+	copy(k.Client[:], clientId)
+	if len(exType) > 0 {
+		k.ExType = exType[0]
+	}
+	copy(k.Stock[:], sCode)
+	return k
 }
 
 // Validate 检查字段是否合法

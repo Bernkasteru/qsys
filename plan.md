@@ -49,3 +49,7 @@ docker exec -it kafka-1 /opt/kafka/bin/kafka-topics.sh --create --topic conorder
 
 docker exec -it deploy-mysql-1 mysql -uroot -proot
 SET GLOBAL max_connections = 500;
+
+docker exec -it kafka-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka-1:19092 --describe --group qsys_upd_group
+ qsys_upd_group
+ 

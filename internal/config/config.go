@@ -12,9 +12,11 @@ import (
 )
 
 type AppConfig struct {
-	Env     string `yaml:"env"`  // dev, test, prod
-	Port    int    `yaml:"port"` // cli_svr 监听端口
-	SimPort int    `yaml:"sim_port"`
+	Env         string        `yaml:"env"`  // dev, test, prod
+	Port        int           `yaml:"port"` // cli_svr 监听端口
+	SimPort     int           `yaml:"sim_port"`
+	DBBatchSize int           `yaml:"db_batch_size"`
+	DBBatchTout time.Duration `yaml:"db_batch_tout"`
 }
 
 type KafkaConfig struct {

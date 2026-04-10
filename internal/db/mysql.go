@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"qsys/internal/model"
+	"strings"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -49,6 +50,53 @@ func (r *OrderRepo) UpdateOrder(ctx context.Context, action string, clientId, ex
 		return fmt.Errorf("[Mysql] Unknown action: %s", action)
 		// return fmt.Errorf("Unknown action: %s", action)
 	}
+	return err
+}
+
+// BatchCreateOrders 批量插入
+func (r *OrderRepo) BatchCreateOrders(ctx context.Context, cres []model.OrderKey) error {
+	if len(cres) == 0 {
+		return nil
+	}
+
+	var sb strings.Builder
+	sb.Grow(80 + len(cres)*15) // 预估长度
+	sb.WriteString("INSERT IGNORE INTO orders (client_id, exchange_type, stock_code) VALUES ")
+	vals := make([]any, 0, len(cres)*3)
+
+	for i, k := range cres {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		sb.WriteString("(?, ?, ?)")
+		vals = append(vals, string(k.Client[:]), string([]byte{k.ExType}), string(k.Stock[:]))
+	}
+
+	_, err := r.db.ExecContext(ctx, sb.String(), vals...)
+	return err
+}
+
+// BatchDeleteOrders 批量删除
+func (r *OrderRepo) BatchDeleteOrders(ctx context.Context, dels []model.OrderKey) error {
+	if len(dels) == 0 {
+		return nil
+	}
+
+	var sb strings.Builder
+	sb.Grow(70 + len(dels)*15) // 预估长度
+	sb.WriteString("DELETE FROM orders WHERE (client_id, exchange_type, stock_code) IN (")
+	vals := make([]any, 0, len(dels)*3)
+
+	for i, k := range dels {
+		if i > 0 {
+			sb.WriteString(",")
+		}
+		sb.WriteString("(?, ?, ?)")
+		vals = append(vals, string(k.Client[:]), string([]byte{k.ExType}), string(k.Stock[:]))
+	}
+	sb.WriteString(")")
+
+	_, err := r.db.ExecContext(ctx, sb.String(), vals...)
 	return err
 }
 
