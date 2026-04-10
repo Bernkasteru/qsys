@@ -7,7 +7,7 @@ scrape_configs:
       - targets: ['qsys-cli-1:8080', 'qsys-cli-2:8080']
   - job_name: 'qsys_mysql'
     static_configs:
-      - targets: ['qsys-mysql-exporter:9104']
+      - targets: ['mysql-exporter:9104']
   - job_name: 'qsys_redis'
     static_configs:
       - targets: ['redis-exporter:9121']

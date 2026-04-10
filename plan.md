@@ -46,3 +46,6 @@ Recover:
 docker exec -it kafka-1 /opt/kafka/bin/kafka-topics.sh --create --topic conorder --partitions 3 --replication-factor 2 --bootstrap-server kafka-1:19092
 
 docker exec -it kafka-1 /opt/kafka/bin/kafka-topics.sh --create --topic conorder_dlq --partitions 3 --replication-factor 2 --config retention.ms=1209600000 --config cleanup.policy=delete --bootstrap-server kafka-1:19092
+
+docker exec -it deploy-mysql-1 mysql -uroot -proot
+SET GLOBAL max_connections = 500;

@@ -158,8 +158,9 @@ services:
   mysql-exporter:
     image: prom/mysqld-exporter:v0.17.2
     container_name: qsys-mysql-exporter
-    environment:
-      - DATA_SOURCE_NAME=root:root@(deploy-mysql-1:3306)/
+    command:
+      - '--mysqld.address=deploy-mysql-1:3306'
+      - '--mysqld.username=root:root'
     ports:
       - "9104:9104"
     depends_on:

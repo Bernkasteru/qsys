@@ -19,7 +19,7 @@ kafka:
   worker_num: 100
   max_queue_size: 1000
   send_timeout: 3s
-  batch_size: 50
+  batch_size: 200
   batch_timeout: 60ms
 
 # MySQL 配置

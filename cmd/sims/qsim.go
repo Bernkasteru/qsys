@@ -62,7 +62,7 @@ func main() {
 		}
 	}()
 
-	tps := 1000
+	tps := 2000
 	tk := time.NewTicker(time.Second / time.Duration(tps))
 	defer tk.Stop()
 
@@ -83,7 +83,7 @@ func main() {
 		case <-tk.C:
 			tar := stockPool[rand.Intn(len(stockPool))]
 			baseID := int64(880000000000)
-			randOffset := rand.Int63n(1000)
+			randOffset := rand.Int63n(10000)
 			order := &model.Order{
 				ClientId:     fmt.Sprintf("%012d", baseID+randOffset),
 				ExchangeType: tar.Exchange,

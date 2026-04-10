@@ -30,7 +30,7 @@ type ConsumerEngine struct {
 }
 
 const (
-	cleanTout   = 2 * time.Second
+	cleanTout   = 6 * time.Second
 	fetchIntrvl = 500 * time.Millisecond
 )
 
@@ -112,7 +112,7 @@ func (e *ConsumerEngine) Start() {
 					log.Printf("[Csm_kafka/%d] Passed to dlq", wk)
 				} else {
 					// 验证: 利用 Offset, 每处理 200 条打印一次
-					if msg.Offset%200 == 0 {
+					if msg.Offset%1000 == 0 {
 						log.Printf("[Csm_kafka/%d] Consuming all right.. db updated: client %s (Offset %d)", wk, string(msg.Key), msg.Offset)
 					}
 				}
