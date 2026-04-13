@@ -100,6 +100,46 @@ func (r *OrderRepo) BatchDeleteOrders(ctx context.Context, dels []model.OrderKey
 	return err
 }
 
+// GetActiveClients 传入一批 client_id, 反查 mysql 中活跃/存在的
+func (r *OrderRepo) GetActiveClients(ctx context.Context, clientIds []string) ([]string, error) {
+	n := len(clientIds)
+	if n == 0 {
+		return nil, nil
+	}
+	// 预分配容量, 避免扩容
+	args := make([]any, n)
+	var sb strings.Builder
+	sb.Grow(58 + n*2)
+	sb.WriteString("SELECT DISTINCT client_id FROM orders WHERE client_id IN (")
+
+	for i, cid := range clientIds {
+		args[i] = cid
+		if i > 0 {
+			sb.WriteString(",?")
+		} else {
+			sb.WriteString("?")
+		}
+	}
+	sb.WriteString(")")
+
+	// 执行查询
+	rows, err := r.db.QueryContext(ctx, sb.String(), args...)
+	if err != nil {
+		return nil, fmt.Errorf("[Mysql] Gac failed for %d clients: %w", n, err)
+	}
+	defer rows.Close()
+
+	rst := make([]string, 0, n)
+	for rows.Next() {
+		var cid string
+		if err := rows.Scan(&cid); err != nil {
+			return nil, fmt.Errorf("[Mysql] Gac scan failed: %w", err)
+		}
+		rst = append(rst, cid)
+	}
+	return rst, rows.Err()
+}
+
 func (r *OrderRepo) GetOrderCount(ctx context.Context, clientId string) (int, error) {
 	var count int
 	err := r.db.QueryRowContext(ctx,

@@ -117,6 +117,7 @@ func setDefault(cfg *Config) {
 	cfg.Kafka.SendTimeout = 2 * time.Second
 	cfg.Kafka.BatchSize = 50
 	cfg.Kafka.BatchTimeout = 60 * time.Millisecond
+	cfg.Redis.Addr = "redis:6379"
 }
 
 func LoadConfig(path string) (*Config, error) {

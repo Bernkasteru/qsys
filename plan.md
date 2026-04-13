@@ -32,7 +32,7 @@ Done:
 - 初始化db
 
 Test?
-go run cmd/syncer/main.go, 同步器
+~~go run cmd/syncer/main.go, 同步器~~
 go run cmd/consumer/main.go *3 消费节点
 go run cmd/sims/qsim.go 发单压测
 

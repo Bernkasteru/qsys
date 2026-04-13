@@ -117,6 +117,10 @@ func (r *RedisRepo) Del(ctx context.Context, key string) error {
 	return r.rdb.Del(ctx, key).Err()
 }
 
+func (r *RedisRepo) Pipeline() redis.Pipeliner {
+	return r.rdb.Pipeline()
+}
+
 func (r *RedisRepo) Close() error {
 	if r.rdb == nil {
 		return nil

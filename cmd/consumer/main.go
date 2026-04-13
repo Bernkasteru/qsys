@@ -22,6 +22,7 @@ import (
 type ConsumerEngine struct {
 	cfg         *config.Config
 	mysqlDB     *db.OrderRepo
+	redisDB     *db.RedisRepo
 	updSvr      *app.UpdSvr
 	kafkaReader *kafka.Reader
 	dlqWriter   *kafka.Writer
@@ -46,6 +47,12 @@ func NewConsumerEngine(cfgPath string) (*ConsumerEngine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect mysql: %w", err)
 	}
+	rRepo := db.NewRedisRepo(db.RedisConfig{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+		PoolSize: 64,
+	})
 
 	kfkRdr := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        cfg.Kafka.Brokers,
@@ -72,7 +79,8 @@ func NewConsumerEngine(cfgPath string) (*ConsumerEngine, error) {
 	return &ConsumerEngine{
 		cfg:         cfg,
 		mysqlDB:     mRepo,
-		updSvr:      app.NewUpdSvr(mRepo), // 处理单条逻辑
+		redisDB:     rRepo,
+		updSvr:      app.NewUpdSvr(mRepo, rRepo), // 处理单条逻辑
 		kafkaReader: kfkRdr,
 		dlqWriter:   dlqWtr,
 		ctx:         ctx,
@@ -238,6 +246,8 @@ func (e *ConsumerEngine) Close() {
 	_ = e.kafkaReader.Close()
 	_ = e.dlqWriter.Close()
 	_ = e.mysqlDB.Close()
+	_ = e.redisDB.Close()
+
 	log.Println("[Csm_main] Engine shutdown")
 }
 
