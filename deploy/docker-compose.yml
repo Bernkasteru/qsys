@@ -113,6 +113,12 @@ services:
       - cli_svr2
     networks:
       - qsys-network
+    sysctls:
+      - net.core.somaxconn=65535
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
   
   # 查询服务实例
   cli_svr1:
@@ -125,6 +131,12 @@ services:
       - QSYS_ENV=prod
     networks:
       - qsys-network
+    sysctls:
+      - net.core.somaxconn=65535
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
   cli_svr2:
     build:
       context: ..
@@ -135,6 +147,12 @@ services:
       - QSYS_ENV=prod
     networks:
       - qsys-network
+    sysctls:
+      - net.core.somaxconn=65535
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
 
   prometheus:
     image: prom/prometheus:v3.8.1

@@ -52,4 +52,8 @@ SET GLOBAL max_connections = 500;
 
 docker exec -it kafka-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka-1:19092 --describe --group qsys_upd_group
  qsys_upd_group
- 
+
+
+ LAST_ID=$(docker exec -e MYSQL_PWD=root deploy-mysql-1 mysql -uroot conorder_db -sN -e "SELECT COALESCE(MAX(id), 0) FROM orders;"); while true; do docker exec -e MYSQL_PWD=root deploy-mysql-1 mysql -uroot conorder_db -sN -e "SELECT CONCAT('[NEW] ID:', id, ' | Client:', client_id, ' | Ex:', exchange_type, ' | Stock:', stock_code) FROM orders WHERE id > $LAST_ID;"; LAST_ID=$(docker exec -e MYSQL_PWD=root deploy-mysql-1 mysql -uroot conorder_db -sN -e "SELECT COALESCE(MAX(id), $LAST_ID) FROM orders;"); sleep 1; done
+
+docker exec -it deploy-redis-1 redis-cli MONITOR | grep --line-buffered -iE '"(sadd|srem)" "qsys:active_clients"'

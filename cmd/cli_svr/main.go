@@ -34,11 +34,16 @@ type CliEngine struct {
 }
 
 const (
-	rdTout   = 3 * time.Second
-	wtTout   = 3 * time.Second
+	rdTout   = 6 * time.Second
+	wtTout   = 6 * time.Second
 	idleTout = 40 * time.Second
 	genTTL   = 2 * time.Second
 	sdTout   = 5 * time.Second
+)
+
+const (
+	cstPath   = "/api/orders/:client_id"
+	cstMethod = "GET"
 )
 
 // Prometheus 监控指标
@@ -74,7 +79,7 @@ func NewCliEngine(cfgPath string) (*CliEngine, error) {
 		Addr:     cfg.Redis.Addr,
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
-		PoolSize: 32,
+		PoolSize: 64,
 	})
 
 	app := fiber.New(fiber.Config{
@@ -109,8 +114,9 @@ func (e *CliEngine) setupApp() {
 	}))
 
 	// /metrics 接口, 供 Prometheus 拉取
+	promHandler := fasthttpadaptor.NewFastHTTPHandler(promhttp.Handler())
 	e.app.Get("/metrics", func(c fiber.Ctx) error {
-		fasthttpadaptor.NewFastHTTPHandler(promhttp.Handler())(c.RequestCtx())
+		promHandler(c.RequestCtx())
 		return nil
 	})
 	// 日志追踪 & Prometheus 监控中间件
@@ -131,8 +137,12 @@ func (e *CliEngine) setupApp() {
 		log.Printf("[%s] %s, %d, %s, %s; ip: %s", e.insName, c.Method(), code, path, time.Since(st), c.IP())
 
 		if path != "/metrics" && path != "/ping" { // Prometheus 指标上报
-			httpRequestsTotal.WithLabelValues(c.Method(), path, strconv.Itoa(code)).Inc()
-			httpRequestDuration.WithLabelValues(c.Method(), path).Observe(time.Since(st).Seconds())
+			routePath := c.Route().Path
+			if routePath == "" {
+				routePath = "unknown" // 兜底处理
+			}
+			httpRequestsTotal.WithLabelValues(cstMethod, cstPath, strconv.Itoa(code)).Inc()
+			httpRequestDuration.WithLabelValues(cstMethod, cstPath).Observe(time.Since(st).Seconds())
 		}
 
 		return err
