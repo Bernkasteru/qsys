@@ -141,8 +141,9 @@ func (e *CliEngine) setupApp() {
 			if routePath == "" {
 				routePath = "unknown" // 兜底处理
 			}
+			t := time.Since(st).Seconds()
 			httpRequestsTotal.WithLabelValues(cstMethod, cstPath, strconv.Itoa(code)).Inc()
-			httpRequestDuration.WithLabelValues(cstMethod, cstPath).Observe(time.Since(st).Seconds())
+			httpRequestDuration.WithLabelValues(cstMethod, cstPath).Observe(t)
 		}
 
 		return err
@@ -173,10 +174,12 @@ func (e *CliEngine) handleQueryOrder(c fiber.Ctx) error {
 	// Redis 判断是否活跃
 	isActive, err := e.redisDB.SIsMember(ctx, clientId)
 	if err != nil {
-		log.Printf("[%s] Redis err: %v", e.insName, err)
+		log.Printf("[%s] Redis/cache err: %v", e.insName, err)
+		c.Set("X-Cache-Status", "CACHE_ERR")
 		return c.Status(fiber.StatusInternalServerError).SendString("Cache error")
 	}
 	if !isActive { // 拦截无效 req
+		c.Set("X-Cache-Status", "SHORT_CIRCUIT")
 		return sendResp(c, &model.QueryResp{
 			ClientId: clientId,
 			Infos:    []*model.OrderInfo{},
@@ -184,6 +187,7 @@ func (e *CliEngine) handleQueryOrder(c fiber.Ctx) error {
 	}
 
 	// 查 mysql
+	c.Set("X-Cache-Status", "HIT_ACTIVE")
 	orders, err := e.mysqlDB.GetOrders(ctx, clientId)
 	if err != nil {
 		log.Printf("[%s] Mysql err: %v", e.insName, err)

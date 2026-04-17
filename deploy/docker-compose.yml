@@ -159,6 +159,7 @@ services:
     container_name: qsys-prometheus
     extra_hosts:
       - "qsys-sim:host-gateway"
+      - "qsys-lcli:host-gateway"
     ports:
       - "9090:9090"
     volumes:

@@ -36,11 +36,11 @@ func NewQsysTargeter(baseUrl string) vegeta.Targeter {
 }
 
 func main() {
-	rateParam := flag.Int("rate", 5000, "QPS/每秒请求数")
+	rateParam := flag.Int("rate", 3000, "QPS/每秒请求数")
 	timeParam := flag.Duration("time", 10*time.Second, "压测持续时间")
 	tarUrl := flag.String("url", "http://localhost", "Nginx 网关地址")
 	flag.Parse()
-	fmt.Println("Qsys http 压测启动..")
+	fmt.Println("Qsys http 压测启动 1..")
 
 	// 配置 Vetega attacker
 	rate := vegeta.Rate{Freq: *rateParam, Per: time.Second}
