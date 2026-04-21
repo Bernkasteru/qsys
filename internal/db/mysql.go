@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"qsys/internal/model"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -14,6 +15,23 @@ import (
 
 type OrderRepo struct {
 	db *sql.DB
+}
+
+// slcPool 负责缓存 []any
+var slcPool = sync.Pool{
+	New: func() any {
+		s := make([]any, 0, 320)
+		return &s
+	},
+}
+
+// sbPool 负责缓存 strings.Builder
+var sbPool = sync.Pool{
+	New: func() any {
+		sb := new(strings.Builder)
+		sb.Grow(5120)
+		return sb
+	},
 }
 
 func NewOrderRepo(dsn string) (*OrderRepo, error) {
@@ -60,10 +78,14 @@ func (r *OrderRepo) BatchCreateOrders(ctx context.Context, cres []model.OrderKey
 		return nil
 	}
 
-	var sb strings.Builder
-	sb.Grow(80 + len(cres)*15) // 预估长度
+	sb := sbPool.Get().(*strings.Builder)
+	sb.Reset() // 清除上轮残留
+	defer sbPool.Put(sb)
+	pVals := slcPool.Get().(*[]any)
+	vals := (*pVals)[:0] // 长度归零
+	defer slcPool.Put(pVals)
+
 	sb.WriteString("INSERT IGNORE INTO orders (client_id, exchange_type, stock_code) VALUES ")
-	vals := make([]any, 0, len(cres)*3)
 
 	for i := range cres {
 		if i > 0 {
@@ -88,10 +110,14 @@ func (r *OrderRepo) BatchDeleteOrders(ctx context.Context, dels []model.OrderKey
 		return nil
 	}
 
-	var sb strings.Builder
-	sb.Grow(70 + len(dels)*15) // 预估长度
+	sb := sbPool.Get().(*strings.Builder)
+	sb.Reset()
+	defer sbPool.Put(sb)
+	pVals := slcPool.Get().(*[]any)
+	vals := (*pVals)[:0]
+	defer slcPool.Put(pVals)
+
 	sb.WriteString("DELETE FROM orders WHERE (client_id, exchange_type, stock_code) IN (")
-	vals := make([]any, 0, len(dels)*3)
 
 	for i := range dels {
 		if i > 0 {

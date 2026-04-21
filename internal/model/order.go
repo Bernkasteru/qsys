@@ -30,9 +30,10 @@ type Order struct {
 
 // OrderKey 使用定长数组, 将结构体作为 mapkey
 type OrderKey struct {
-	Client [12]byte
-	ExType byte
-	Stock  [6]byte
+	Client [12]byte // 0 - 11
+	ExType byte     // 12
+	Stock  [6]byte  // 13 - 18
+	_      [5]byte  // padding 19 - 23
 }
 
 func New(clientId, exchangeType, stockCode, action string) *Order {

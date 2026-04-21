@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/protobuf/proto"
 )
@@ -90,14 +91,14 @@ func NewConsumerEngine(cfgPath string) (*ConsumerEngine, error) {
 
 // 手动实现的轻量 FNV-1a 哈希算法,
 // client_id -> 特定worker
-func hashBytes(data []byte) uint32 {
-	var h uint32 = 2166136261 // offset_basis
-	for _, b := range data {
-		h ^= uint32(b)
-		h *= 16777619 // fnv_prime
-	}
-	return h
-}
+// func hashBytes(data []byte) uint32 {
+// 	var h uint32 = 2166136261 // offset_basis
+// 	for _, b := range data {
+// 		h ^= uint32(b)
+// 		h *= 16777619 // fnv_prime
+// 	}
+// 	return h
+// }
 
 func (e *ConsumerEngine) runWorker(wk int, ch <-chan kafka.Message) {
 	defer e.wg.Done()
@@ -231,7 +232,7 @@ func (e *ConsumerEngine) Start() {
 				continue
 			}
 			// 哈希取模分发; 同 client_id -> 同 worker
-			i := hashBytes(msg.Key) % uint32(workerNum)
+			i := uint32(xxhash.Sum64(msg.Key)) % uint32(workerNum)
 			workerChans[i] <- msg
 		}
 	})

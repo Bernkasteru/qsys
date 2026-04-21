@@ -93,8 +93,8 @@ func NewCliEngine(cfgPath string) (*CliEngine, error) {
 		// 适配 Nginx
 		ProxyHeader: "X-Forwarded-For",
 		TrustProxy:  true,
-		// 性能优化
-		ReduceMemoryUsage: true,
+		// 性能优化..
+		ReduceMemoryUsage: false,
 		// 快速序列化
 		JSONEncoder: sonic.Marshal,
 		JSONDecoder: sonic.Unmarshal,
@@ -142,10 +142,10 @@ func (e *CliEngine) setupApp() {
 		log.Printf("[%s] %s, %d, %s, %s; ip: %s", e.insName, c.Method(), code, path, time.Since(st), c.IP())
 
 		if path != "/metrics" && path != "/ping" { // Prometheus 指标上报
-			routePath := c.Route().Path
-			if routePath == "" {
-				routePath = "unknown" // 兜底处理
-			}
+			// routePath := c.Route().Path
+			// if routePath == "" {
+			// 	routePath = "unknown" // 兜底处理
+			// }
 			t := time.Since(st).Seconds()
 			httpRequestsTotal.WithLabelValues(cstMethod, cstPath, strconv.Itoa(code)).Inc()
 			httpRequestDuration.WithLabelValues(cstMethod, cstPath).Observe(t)
@@ -214,17 +214,17 @@ func (e *CliEngine) handleQueryOrder(c fiber.Ctx) error {
 	}
 
 	// 构造响应
-	infoSlc := make([]*model.OrderInfo, len(orders))
-	for i, order := range orders {
-		infoSlc[i] = &model.OrderInfo{
-			ExchangeType: order.ExchangeType,
-			StockCode:    order.StockCode,
-		}
-	}
+	// infoSlc := make([]*model.OrderInfo, len(orders))
+	// for i, order := range orders {
+	// 	infoSlc[i] = &model.OrderInfo{
+	// 		ExchangeType: order.ExchangeType,
+	// 		StockCode:    order.StockCode,
+	// 	}
+	// }
 
 	return sendResp(c, &model.QueryResp{
 		ClientId: clientId,
-		Infos:    infoSlc,
+		Infos:    orders,
 	}, fmtType)
 }
 

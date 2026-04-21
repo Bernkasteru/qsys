@@ -29,50 +29,17 @@ func NewUpdSvr(m *db.OrderRepo, r *db.RedisRepo) *UpdSvr {
 }
 
 func cmpOrderKey(a, b model.OrderKey) int {
-	// 1. 比较 Client (12 -> 8 + 4)
-	aC0 := *(*uint64)(unsafe.Pointer(&a.Client[0]))
-	bC0 := *(*uint64)(unsafe.Pointer(&b.Client[0]))
-	if aC0 != bC0 {
-		if aC0 < bC0 {
-			return -1
-		}
-		return 1
-	}
-	aC1 := *(*uint32)(unsafe.Pointer(&a.Client[8]))
-	bC1 := *(*uint32)(unsafe.Pointer(&b.Client[8]))
-	if aC1 != bC1 {
-		if aC1 < bC1 {
-			return -1
-		}
-		return 1
-	}
+	pA := (*[3]uint64)(unsafe.Pointer(&a))
+	pB := (*[3]uint64)(unsafe.Pointer(&b))
 
-	// 2. 比较 ExType (1 )
-	if a.ExType != b.ExType {
-		if a.ExType < b.ExType {
-			return -1
+	for i := range 3 {
+		if pA[i] != pB[i] {
+			if pA[i] < pB[i] {
+				return -1
+			}
+			return 1
 		}
-		return 1
 	}
-
-	// 3. 比较 Stock (6 -> 4 + 2)
-	aS0 := *(*uint32)(unsafe.Pointer(&a.Stock[0]))
-	bS0 := *(*uint32)(unsafe.Pointer(&b.Stock[0]))
-	if aS0 != bS0 {
-		if aS0 < bS0 {
-			return -1
-		}
-		return 1
-	}
-	aS1 := *(*uint16)(unsafe.Pointer(&a.Stock[4]))
-	bS1 := *(*uint16)(unsafe.Pointer(&b.Stock[4]))
-	if aS1 != bS1 {
-		if aS1 < bS1 {
-			return -1
-		}
-		return 1
-	}
-
 	return 0
 }
 
