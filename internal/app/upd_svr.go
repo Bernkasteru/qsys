@@ -1,15 +1,15 @@
 package app
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"math/rand"
 	"qsys/internal/db"
 	"qsys/internal/model"
-	"sort"
+	"slices"
 	"time"
+	"unsafe"
 
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/protobuf/proto"
@@ -26,6 +26,90 @@ const maxRetries = 3
 
 func NewUpdSvr(m *db.OrderRepo, r *db.RedisRepo) *UpdSvr {
 	return &UpdSvr{mysql: m, redis: r}
+}
+
+func cmpOrderKey(a, b model.OrderKey) int {
+	// 1. 比较 Client (12 -> 8 + 4)
+	aC0 := *(*uint64)(unsafe.Pointer(&a.Client[0]))
+	bC0 := *(*uint64)(unsafe.Pointer(&b.Client[0]))
+	if aC0 != bC0 {
+		if aC0 < bC0 {
+			return -1
+		}
+		return 1
+	}
+	aC1 := *(*uint32)(unsafe.Pointer(&a.Client[8]))
+	bC1 := *(*uint32)(unsafe.Pointer(&b.Client[8]))
+	if aC1 != bC1 {
+		if aC1 < bC1 {
+			return -1
+		}
+		return 1
+	}
+
+	// 2. 比较 ExType (1 )
+	if a.ExType != b.ExType {
+		if a.ExType < b.ExType {
+			return -1
+		}
+		return 1
+	}
+
+	// 3. 比较 Stock (6 -> 4 + 2)
+	aS0 := *(*uint32)(unsafe.Pointer(&a.Stock[0]))
+	bS0 := *(*uint32)(unsafe.Pointer(&b.Stock[0]))
+	if aS0 != bS0 {
+		if aS0 < bS0 {
+			return -1
+		}
+		return 1
+	}
+	aS1 := *(*uint16)(unsafe.Pointer(&a.Stock[4]))
+	bS1 := *(*uint16)(unsafe.Pointer(&b.Stock[4]))
+	if aS1 != bS1 {
+		if aS1 < bS1 {
+			return -1
+		}
+		return 1
+	}
+
+	return 0
+}
+
+func cmpOrderKeySafe(a, b model.OrderKey) int {
+	// 1. 比较 Client
+	if a.Client != b.Client {
+		for i := range len(a.Client) {
+			if a.Client[i] != b.Client[i] {
+				if a.Client[i] < b.Client[i] {
+					return -1
+				}
+				return 1
+			}
+		}
+	}
+
+	// 2. 比较 ExType
+	if a.ExType != b.ExType {
+		if a.ExType < b.ExType {
+			return -1
+		}
+		return 1
+	}
+
+	// 3. 比较 Stock
+	if a.Stock != b.Stock {
+		for i := range len(a.Stock) {
+			if a.Stock[i] != b.Stock[i] {
+				if a.Stock[i] < b.Stock[i] {
+					return -1
+				}
+				return 1
+			}
+		}
+	}
+
+	return 0
 }
 
 func (s *UpdSvr) Handle(ctx context.Context, msg kafka.Message) error {
@@ -56,27 +140,11 @@ func (s *UpdSvr) HandleBatch(ctx context.Context, fMap map[model.OrderKey]byte) 
 
 	// 排序, 防交叉死锁
 	if len(cres) > 1 {
-		sort.Slice(cres, func(i, j int) bool {
-			if cres[i].Client != cres[j].Client {
-				return bytes.Compare(cres[i].Client[:], cres[j].Client[:]) < 0
-			}
-			if cres[i].ExType != cres[j].ExType {
-				return cres[i].ExType < cres[j].ExType
-			}
-			return bytes.Compare(cres[i].Stock[:], cres[j].Stock[:]) < 0
-		})
+		slices.SortFunc(cres, cmpOrderKey)
 	}
 
 	if len(dels) > 1 {
-		sort.Slice(dels, func(i, j int) bool {
-			if dels[i].Client != dels[j].Client {
-				return bytes.Compare(dels[i].Client[:], dels[j].Client[:]) < 0
-			}
-			if dels[i].ExType != dels[j].ExType {
-				return dels[i].ExType < dels[j].ExType
-			}
-			return bytes.Compare(dels[i].Stock[:], dels[j].Stock[:]) < 0
-		})
+		slices.SortFunc(dels, cmpOrderKey)
 	}
 
 	execWithRetry := func(op string, do func() error) error {

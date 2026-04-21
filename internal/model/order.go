@@ -2,7 +2,6 @@ package model
 
 import (
 	"fmt"
-	"regexp"
 	"time"
 )
 
@@ -13,10 +12,10 @@ const (
 	ExchangeSZ   = "2" // 深市
 )
 
-var (
-	clientIdRegex  = regexp.MustCompile(`^\d{12}$`)
-	stockCodeRegex = regexp.MustCompile(`^\d{6}$`)
-)
+// var (
+// 	clientIdRegex  = regexp.MustCompile(`^\d{12}$`)
+// 	stockCodeRegex = regexp.MustCompile(`^\d{6}$`)
+// )
 
 /*
 type Order struct {
@@ -56,15 +55,28 @@ func BuildOrderKey(clientId string, exType string, sCode string) OrderKey {
 	return k
 }
 
+func isValid(s string, slen int) bool {
+	if len(s) != slen {
+		return false
+	}
+	for i := range slen {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Validate 检查字段是否合法
 func (o *Order) Validate() error {
-	if !clientIdRegex.MatchString(o.ClientId) {
+	if !isValid(o.ClientId, 12) {
 		return fmt.Errorf("Invalid client_id: '%s'", o.ClientId)
 	}
 	if o.ExchangeType != ExchangeSH && o.ExchangeType != ExchangeSZ {
 		return fmt.Errorf("Invalid exchange_type: '%s'; must be '1' or '2'", o.ExchangeType)
 	}
-	if !stockCodeRegex.MatchString(o.StockCode) {
+	if !isValid(o.StockCode, 6) {
 		return fmt.Errorf("Invalid stock_code: '%s'", o.StockCode)
 	}
 	if o.Action != ActionCreate && o.Action != ActionDelete {
