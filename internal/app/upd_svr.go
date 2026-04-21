@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -57,24 +58,24 @@ func (s *UpdSvr) HandleBatch(ctx context.Context, fMap map[model.OrderKey]byte) 
 	if len(cres) > 1 {
 		sort.Slice(cres, func(i, j int) bool {
 			if cres[i].Client != cres[j].Client {
-				return string(cres[i].Client[:]) < string(cres[j].Client[:])
+				return bytes.Compare(cres[i].Client[:], cres[j].Client[:]) < 0
 			}
 			if cres[i].ExType != cres[j].ExType {
 				return cres[i].ExType < cres[j].ExType
 			}
-			return string(cres[i].Stock[:]) < string(cres[j].Stock[:])
+			return bytes.Compare(cres[i].Stock[:], cres[j].Stock[:]) < 0
 		})
 	}
 
 	if len(dels) > 1 {
 		sort.Slice(dels, func(i, j int) bool {
 			if dels[i].Client != dels[j].Client {
-				return string(dels[i].Client[:]) < string(dels[j].Client[:])
+				return bytes.Compare(dels[i].Client[:], dels[j].Client[:]) < 0
 			}
 			if dels[i].ExType != dels[j].ExType {
 				return dels[i].ExType < dels[j].ExType
 			}
-			return string(dels[i].Stock[:]) < string(dels[j].Stock[:])
+			return bytes.Compare(dels[i].Stock[:], dels[j].Stock[:]) < 0
 		})
 	}
 
