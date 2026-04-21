@@ -139,7 +139,7 @@ func (e *CliEngine) setupApp() {
 			}
 		}
 		path := c.Path()
-		log.Printf("[%s] %s, %d, %s, %s; ip: %s", e.insName, c.Method(), code, path, time.Since(st), c.IP())
+		// log.Printf("[%s] %s, %d, %s, %s; ip: %s", e.insName, c.Method(), code, path, time.Since(st), c.IP())
 
 		if path != "/metrics" && path != "/ping" { // Prometheus 指标上报
 			// routePath := c.Route().Path
@@ -156,7 +156,7 @@ func (e *CliEngine) setupApp() {
 
 	// 单节点限流
 	e.app.Use(limiter.New(limiter.Config{
-		Max:        3600,
+		Max:        4000,
 		Expiration: 1 * time.Second,
 		KeyGenerator: func(c fiber.Ctx) string {
 			return "glimit"
@@ -178,7 +178,7 @@ func (e *CliEngine) setupApp() {
 
 func (e *CliEngine) handleQueryOrder(c fiber.Ctx) error {
 	clientId := c.Params("client_id")
-	if !isValidClientId(clientId) { // 校验格式
+	if !model.IsValid(clientId, 12) { // 校验格式
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid client_id")
 	}
 
@@ -226,20 +226,6 @@ func (e *CliEngine) handleQueryOrder(c fiber.Ctx) error {
 		ClientId: clientId,
 		Infos:    orders,
 	}, fmtType)
-}
-
-func isValidClientId(id string) bool {
-	if len(id) != 12 {
-		return false
-	}
-
-	for i := range 12 {
-		if id[i] < '0' || id[i] > '9' {
-			return false
-		}
-	}
-
-	return true
 }
 
 func sendProtoResp(c fiber.Ctx, resp *model.QueryResp) error {

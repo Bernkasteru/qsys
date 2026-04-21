@@ -59,3 +59,7 @@ docker exec -it kafka-1 /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-serv
 docker exec -it deploy-redis-1 redis-cli MONITOR | grep --line-buffered -iE '"(sadd|srem)" "qsys:active_clients"'
 
 Mysql -> tmp redis set -> 重命名
+
+sudo sysctl -w kern.maxfiles=1048576
+sudo sysctl -w kern.maxfilesperproc=1048576
+ulimit -n 65535

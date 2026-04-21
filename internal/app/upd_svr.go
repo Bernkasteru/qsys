@@ -28,7 +28,7 @@ func NewUpdSvr(m *db.OrderRepo, r *db.RedisRepo) *UpdSvr {
 	return &UpdSvr{mysql: m, redis: r}
 }
 
-// Unsafe?
+// Unsafe? 暂时不用..
 func cmpOrderKey(a, b model.OrderKey) int {
 	pA := (*[3]uint64)(unsafe.Pointer(&a))
 	pB := (*[3]uint64)(unsafe.Pointer(&b))

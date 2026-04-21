@@ -56,7 +56,7 @@ func BuildOrderKey(clientId string, exType string, sCode string) OrderKey {
 	return k
 }
 
-func isValid(s string, slen int) bool {
+func IsValid(s string, slen int) bool {
 	if len(s) != slen {
 		return false
 	}
@@ -71,13 +71,13 @@ func isValid(s string, slen int) bool {
 
 // Validate 检查字段是否合法
 func (o *Order) Validate() error {
-	if !isValid(o.ClientId, 12) {
+	if !IsValid(o.ClientId, 12) {
 		return fmt.Errorf("Invalid client_id: '%s'", o.ClientId)
 	}
 	if o.ExchangeType != ExchangeSH && o.ExchangeType != ExchangeSZ {
 		return fmt.Errorf("Invalid exchange_type: '%s'; must be '1' or '2'", o.ExchangeType)
 	}
-	if !isValid(o.StockCode, 6) {
+	if !IsValid(o.StockCode, 6) {
 		return fmt.Errorf("Invalid stock_code: '%s'", o.StockCode)
 	}
 	if o.Action != ActionCreate && o.Action != ActionDelete {

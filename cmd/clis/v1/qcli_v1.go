@@ -31,12 +31,20 @@ func NewQsysTargeter(baseUrl string) vegeta.Targeter {
 		}
 
 		tar.URL = fmt.Sprintf("%s/api/orders/%s?fmt=j", baseUrl, clientId)
+
+		// 初始化 Header, 注入伪造随机 IP
+		if tar.Header == nil {
+			tar.Header = make(http.Header)
+		}
+		randomIp := fmt.Sprintf("%d.%d.%d.%d", rand.Intn(255), rand.Intn(255), rand.Intn(255), rand.Intn(255))
+		tar.Header.Set("X-Real-IP", randomIp)
+		tar.Header.Set("X-Forwarded-For", randomIp)
 		return nil
 	}
 }
 
 func main() {
-	rateParam := flag.Int("rate", 7500, "QPS/每秒请求数")
+	rateParam := flag.Int("rate", 6400, "QPS/每秒请求数")
 	timeParam := flag.Duration("time", 10*time.Second, "压测持续时间")
 	tarUrl := flag.String("url", "http://localhost", "Nginx 网关地址")
 	flag.Parse()
