@@ -28,6 +28,7 @@ func NewUpdSvr(m *db.OrderRepo, r *db.RedisRepo) *UpdSvr {
 	return &UpdSvr{mysql: m, redis: r}
 }
 
+// Unsafe?
 func cmpOrderKey(a, b model.OrderKey) int {
 	pA := (*[3]uint64)(unsafe.Pointer(&a))
 	pB := (*[3]uint64)(unsafe.Pointer(&b))
@@ -107,11 +108,11 @@ func (s *UpdSvr) HandleBatch(ctx context.Context, fMap map[model.OrderKey]byte) 
 
 	// 排序, 防交叉死锁
 	if len(cres) > 1 {
-		slices.SortFunc(cres, cmpOrderKey)
+		slices.SortFunc(cres, cmpOrderKeySafe)
 	}
 
 	if len(dels) > 1 {
-		slices.SortFunc(dels, cmpOrderKey)
+		slices.SortFunc(dels, cmpOrderKeySafe)
 	}
 
 	execWithRetry := func(op string, do func() error) error {
