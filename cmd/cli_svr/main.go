@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 	frecover "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -148,6 +149,20 @@ func (e *CliEngine) setupApp() {
 
 		return err
 	})
+
+	// 单节点限流
+	e.app.Use(limiter.New(limiter.Config{
+		Max:        3600,
+		Expiration: 1 * time.Second,
+		KeyGenerator: func(c fiber.Ctx) string {
+			return "glimit"
+		},
+		LimitReached: func(c fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"error": "System is at max capacity, please try again later.",
+			})
+		},
+	}))
 
 	// ping 检查
 	e.app.Get("/ping", func(c fiber.Ctx) error {

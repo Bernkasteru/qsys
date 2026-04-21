@@ -21,7 +21,7 @@ func NewQsysTargeter(baseUrl string) vegeta.Targeter {
 		tar.Method = http.MethodGet
 
 		var clientId string
-		if rand.Float32() < 0.7 {
+		if rand.Float32() < 0.1 {
 			// 70% 对应 qsim 生成的活跃号段
 			baseId := int64(880000000000)
 			clientId = fmt.Sprintf("%012d", baseId+rand.Int63n(10000))
@@ -36,7 +36,7 @@ func NewQsysTargeter(baseUrl string) vegeta.Targeter {
 }
 
 func main() {
-	rateParam := flag.Int("rate", 3000, "QPS/每秒请求数")
+	rateParam := flag.Int("rate", 7500, "QPS/每秒请求数")
 	timeParam := flag.Duration("time", 10*time.Second, "压测持续时间")
 	tarUrl := flag.String("url", "http://localhost", "Nginx 网关地址")
 	flag.Parse()

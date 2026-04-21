@@ -121,7 +121,7 @@ func (e *ConsumerEngine) runWorker(wk int, ch <-chan kafka.Message) {
 			return
 		}
 
-		// b.1 操作折叠
+		// b.1 操作折叠/合并
 		var od model.Order
 		for _, msg := range msgBatch {
 			od.Reset()
