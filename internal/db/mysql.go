@@ -7,6 +7,7 @@ import (
 	"qsys/internal/model"
 	"strings"
 	"time"
+	"unsafe"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -64,12 +65,17 @@ func (r *OrderRepo) BatchCreateOrders(ctx context.Context, cres []model.OrderKey
 	sb.WriteString("INSERT IGNORE INTO orders (client_id, exchange_type, stock_code) VALUES ")
 	vals := make([]any, 0, len(cres)*3)
 
-	for i, k := range cres {
+	for i := range cres {
 		if i > 0 {
 			sb.WriteString(",")
 		}
 		sb.WriteString("(?, ?, ?)")
-		vals = append(vals, string(k.Client[:]), string([]byte{k.ExType}), string(k.Stock[:]))
+		// vals = append(vals, string(k.Client[:]), string([]byte{k.ExType}), string(k.Stock[:]))
+		vals = append(vals,
+			unsafe.String(&cres[i].Client[0], 12),
+			unsafe.String(&cres[i].ExType, 1),
+			unsafe.String(&cres[i].Stock[0], 6),
+		)
 	}
 
 	_, err := r.db.ExecContext(ctx, sb.String(), vals...)
@@ -87,12 +93,17 @@ func (r *OrderRepo) BatchDeleteOrders(ctx context.Context, dels []model.OrderKey
 	sb.WriteString("DELETE FROM orders WHERE (client_id, exchange_type, stock_code) IN (")
 	vals := make([]any, 0, len(dels)*3)
 
-	for i, k := range dels {
+	for i := range dels {
 		if i > 0 {
 			sb.WriteString(",")
 		}
 		sb.WriteString("(?, ?, ?)")
-		vals = append(vals, string(k.Client[:]), string([]byte{k.ExType}), string(k.Stock[:]))
+		// vals = append(vals, string(k.Client[:]), string([]byte{k.ExType}), string(k.Stock[:]))
+		vals = append(vals,
+			unsafe.String(&dels[i].Client[0], 12),
+			unsafe.String(&dels[i].ExType, 1),
+			unsafe.String(&dels[i].Stock[0], 6),
+		)
 	}
 	sb.WriteString(")")
 

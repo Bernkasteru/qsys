@@ -9,11 +9,11 @@ import (
 	"qsys/internal/config"
 	"qsys/internal/db"
 	"qsys/internal/model"
-	"regexp"
 	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	frecover "github.com/gofiber/fiber/v3/middleware/recover"
@@ -24,7 +24,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var clientIdRegex = regexp.MustCompile(`^\d{12}$`)
+// 正则表达式, 预编译到全局变量
+// var clientIdRegex = regexp.MustCompile(`^\d{12}$`)
 
 type CliEngine struct {
 	insName string
@@ -94,6 +95,9 @@ func NewCliEngine(cfgPath string) (*CliEngine, error) {
 		TrustProxy:  true,
 		// 性能优化
 		ReduceMemoryUsage: true,
+		// 快速序列化
+		JSONEncoder: sonic.Marshal,
+		JSONDecoder: sonic.Unmarshal,
 	})
 
 	e1 := &CliEngine{
@@ -174,7 +178,7 @@ func (e *CliEngine) setupApp() {
 
 func (e *CliEngine) handleQueryOrder(c fiber.Ctx) error {
 	clientId := c.Params("client_id")
-	if !clientIdRegex.MatchString(clientId) { // 校验格式
+	if !isValidClientId(clientId) { // 校验格式
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid client_id")
 	}
 
@@ -222,6 +226,20 @@ func (e *CliEngine) handleQueryOrder(c fiber.Ctx) error {
 		ClientId: clientId,
 		Infos:    infoSlc,
 	}, fmtType)
+}
+
+func isValidClientId(id string) bool {
+	if len(id) != 12 {
+		return false
+	}
+
+	for i := range 12 {
+		if id[i] < '0' || id[i] > '9' {
+			return false
+		}
+	}
+
+	return true
 }
 
 func sendProtoResp(c fiber.Ctx, resp *model.QueryResp) error {
