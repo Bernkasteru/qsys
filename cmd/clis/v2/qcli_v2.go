@@ -139,8 +139,8 @@ func worker(ctx context.Context, client *http.Client, baseUrl string, jobs <-cha
 }
 
 func main() {
-	rateParam := flag.Int("rate", 1000, "QPS/每秒请求数")
-	timeParam := flag.Duration("time", 160*time.Second, "压测持续时间")
+	rateParam := flag.Int("rate", 5000, "QPS/每秒请求数")
+	timeParam := flag.Duration("time", 30*time.Minute, "压测持续时间")
 	tarUrl := flag.String("url", "http://localhost", "Nginx 网关地址")
 	spoofIp := flag.Bool("spoof-ip", true, "是否伪造随机 ip")
 	flag.Parse()

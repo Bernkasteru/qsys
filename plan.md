@@ -11,14 +11,14 @@ qsys/
 │   ├── db/                     # MySQL 封装层，处理 exchang_type 和 stock_code
 │   ├── mq/                     # Kafka 生产者(tools用)与消费者(upd_svr用)
 │   ├── api/                    # HTTP 路由与 Controller (被 cli_svr 调用)
-│   └── service/                # 业务层，如原子性更新 
+│   └── service/                # 业务层，原子性更新.. 
 │
 ├── deploy/                     # 运维与部署
 │   ├── nginx.conf              # Nginx 配置文件 (轮询或 ip_hash) 
 │   ├── init.sql                # MySQL 建表脚本
 │   └── docker-compose.yml      
 │
-├── wails-dashboard/            # Wails 前端
+├── wails-dashboard/            # Wails 前端 [弃用]
 │   ├── frontend/               # React / Vue / JS ..
 │   ├── app.go                  # Wails 绑定的 Go 后端 (调用 tools 发单，或调用 Nginx 查询)
 │   └── main.go                 # Wails 桌面程序入口
