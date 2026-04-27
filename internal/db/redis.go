@@ -19,7 +19,7 @@ type RedisConfig struct {
 	PoolSize int
 }
 
-const Ac = "qsys:active_clients"
+var Ac = "qsys:active_clients"
 
 const UnlockScript = `
 if redis.call("GET", KEYS[1]) == ARGV[1] then

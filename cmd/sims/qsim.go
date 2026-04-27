@@ -62,7 +62,7 @@ func main() {
 		}
 	}()
 
-	tps := 2000
+	tps := 6000
 	tk := time.NewTicker(time.Second / time.Duration(tps))
 	defer tk.Stop()
 

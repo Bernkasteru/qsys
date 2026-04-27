@@ -3,7 +3,7 @@ app:
   port: 8080
   sim_port: 9100
   db_batch_size: 100
-  db_batch_tout: 300ms
+  db_batch_tout: 500ms
 
 # Kafka 集群配置
 kafka:

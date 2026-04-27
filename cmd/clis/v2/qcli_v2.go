@@ -109,11 +109,17 @@ func worker(ctx context.Context, client *http.Client, baseUrl string, jobs <-cha
 			status = strconv.Itoa(resp.StatusCode)
 			cacheRst = resp.Header.Get("X-Cache-Status")
 			if cacheRst == "" {
-				// 触发应用层 429 限流
-				if resp.StatusCode == 429 {
+
+				switch resp.StatusCode {
+				case 429:
+					// 应用层 429 限流
 					cacheRst = "RATE_LIMITED"
+				case 503:
+					// Nginx 接入层限流
+					cacheRst = "NGINX_LIMITED"
+				default:
+					cacheRst = "MISSING_HEADER"
 				}
-				cacheRst = "MISSING_HEADER"
 			}
 
 			// 排空, 关闭 body
@@ -133,7 +139,7 @@ func worker(ctx context.Context, client *http.Client, baseUrl string, jobs <-cha
 }
 
 func main() {
-	rateParam := flag.Int("rate", 5000, "QPS/每秒请求数")
+	rateParam := flag.Int("rate", 1000, "QPS/每秒请求数")
 	timeParam := flag.Duration("time", 160*time.Second, "压测持续时间")
 	tarUrl := flag.String("url", "http://localhost", "Nginx 网关地址")
 	spoofIp := flag.Bool("spoof-ip", true, "是否伪造随机 ip")

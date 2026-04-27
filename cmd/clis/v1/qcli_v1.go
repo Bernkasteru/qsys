@@ -44,7 +44,7 @@ func NewQsysTargeter(baseUrl string) vegeta.Targeter {
 }
 
 func main() {
-	rateParam := flag.Int("rate", 6400, "QPS/每秒请求数")
+	rateParam := flag.Int("rate", 7000, "QPS/每秒请求数")
 	timeParam := flag.Duration("time", 10*time.Second, "压测持续时间")
 	tarUrl := flag.String("url", "http://localhost", "Nginx 网关地址")
 	flag.Parse()

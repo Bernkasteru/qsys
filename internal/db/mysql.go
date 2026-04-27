@@ -17,6 +17,14 @@ type OrderRepo struct {
 	db *sql.DB
 }
 
+var (
+	SqlInsert      = "INSERT IGNORE INTO orders (client_id, exchange_type, stock_code) VALUES (?, ?, ?)"
+	SqlDelete      = "DELETE FROM orders WHERE client_id = ? AND exchange_type = ? AND stock_code = ?"
+	SqlBatchInsert = "INSERT IGNORE INTO orders (client_id, exchange_type, stock_code) VALUES "
+	SqlBatchDelete = "DELETE FROM orders WHERE (client_id, exchange_type, stock_code) IN ("
+	SqlGetActive   = "SELECT DISTINCT client_id FROM orders WHERE client_id IN ("
+)
+
 // slcPool 负责缓存 []any
 var slcPool = sync.Pool{
 	New: func() any {
@@ -58,13 +66,9 @@ func (r *OrderRepo) UpdateOrder(ctx context.Context, action string, clientId, ex
 	var err error
 	switch action {
 	case "cre":
-		_, err = r.db.ExecContext(ctx,
-			"INSERT IGNORE INTO orders (client_id, exchange_type, stock_code) VALUES (?, ?, ?)",
-			clientId, exType, sCode)
+		_, err = r.db.ExecContext(ctx, SqlInsert, clientId, exType, sCode)
 	case "del":
-		_, err = r.db.ExecContext(ctx,
-			"DELETE FROM orders WHERE client_id = ? AND exchange_type = ? AND stock_code = ?",
-			clientId, exType, sCode)
+		_, err = r.db.ExecContext(ctx, SqlDelete, clientId, exType, sCode)
 	default:
 		return fmt.Errorf("[Mysql] Unknown action: %s", action)
 		// return fmt.Errorf("Unknown action: %s", action)
@@ -85,7 +89,7 @@ func (r *OrderRepo) BatchCreateOrders(ctx context.Context, cres []model.OrderKey
 	vals := (*pVals)[:0] // 长度归零
 	defer slcPool.Put(pVals)
 
-	sb.WriteString("INSERT IGNORE INTO orders (client_id, exchange_type, stock_code) VALUES ")
+	sb.WriteString(SqlBatchInsert)
 
 	for i := range cres {
 		if i > 0 {
@@ -117,7 +121,7 @@ func (r *OrderRepo) BatchDeleteOrders(ctx context.Context, dels []model.OrderKey
 	vals := (*pVals)[:0]
 	defer slcPool.Put(pVals)
 
-	sb.WriteString("DELETE FROM orders WHERE (client_id, exchange_type, stock_code) IN (")
+	sb.WriteString(SqlBatchDelete)
 
 	for i := range dels {
 		if i > 0 {
@@ -147,7 +151,7 @@ func (r *OrderRepo) GetActiveClients(ctx context.Context, clientIds []string) ([
 	args := make([]any, n)
 	var sb strings.Builder
 	sb.Grow(58 + n*2)
-	sb.WriteString("SELECT DISTINCT client_id FROM orders WHERE client_id IN (")
+	sb.WriteString(SqlGetActive)
 
 	for i, cid := range clientIds {
 		args[i] = cid

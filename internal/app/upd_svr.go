@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"qsys/internal/db"
 	"qsys/internal/model"
-	"slices"
 	"time"
 	"unsafe"
 
@@ -107,13 +106,13 @@ func (s *UpdSvr) HandleBatch(ctx context.Context, fMap map[model.OrderKey]byte) 
 	}
 
 	// 排序, 防交叉死锁
-	if len(cres) > 1 {
-		slices.SortFunc(cres, cmpOrderKeySafe)
-	}
+	// if len(cres) > 1 {
+	// 	slices.SortFunc(cres, cmpOrderKeySafe)
+	// }
 
-	if len(dels) > 1 {
-		slices.SortFunc(dels, cmpOrderKeySafe)
-	}
+	// if len(dels) > 1 {
+	// 	slices.SortFunc(dels, cmpOrderKeySafe)
+	// }
 
 	execWithRetry := func(op string, do func() error) error {
 		var err error

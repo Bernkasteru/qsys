@@ -53,6 +53,7 @@ func NewConsumerEngine(cfgPath string) (*ConsumerEngine, error) {
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 		PoolSize: 64,
+		// AcKey:    cfg.Redis.AcKey,
 	})
 
 	kfkRdr := kafka.NewReader(kafka.ReaderConfig{
@@ -232,7 +233,7 @@ func (e *ConsumerEngine) Start() {
 				continue
 			}
 			// 哈希取模分发; 同 client_id -> 同 worker
-			i := uint32(xxhash.Sum64(msg.Key)) % uint32(workerNum)
+			i := xxhash.Sum64(msg.Key) % uint64(workerNum)
 			workerChans[i] <- msg
 		}
 	})
@@ -262,6 +263,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("[Csm_main] Init err: %v", err)
 	}
+
+	if os.Getenv("QSYS_TEST_MODE") == "1" {
+		db.Ac = "qsys:active_clients_test"
+		db.SqlInsert = "INSERT IGNORE INTO orders_test (client_id, exchange_type, stock_code) VALUES (?, ?, ?)"
+		db.SqlDelete = "DELETE FROM orders_test WHERE client_id = ? AND exchange_type = ? AND stock_code = ?"
+		db.SqlBatchInsert = "INSERT IGNORE INTO orders_test (client_id, exchange_type, stock_code) VALUES "
+		db.SqlBatchDelete = "DELETE FROM orders_test WHERE (client_id, exchange_type, stock_code) IN ("
+		db.SqlGetActive = "SELECT DISTINCT client_id FROM orders_test WHERE client_id IN ("
+		fmt.Println("!! 注意: 当前运行在 [测试模式], 数据将写入 orders_test")
+	}
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 

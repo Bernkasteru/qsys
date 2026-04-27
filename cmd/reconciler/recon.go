@@ -19,7 +19,7 @@ import (
 type setVal struct{}
 
 const (
-	bSize      = 400
+	bSize      = 600
 	lockKey    = "qsys:recon:lock"
 	lockTTL    = 5 * time.Minute
 	renewIntvl = 2 * time.Minute

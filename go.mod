@@ -15,6 +15,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.50
 	github.com/tsenart/vegeta/v12 v12.13.0
 	github.com/valyala/fasthttp v1.70.0
+	golang.org/x/time v0.15.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -55,5 +56,4 @@ require (
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
 )
